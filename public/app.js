@@ -67,3 +67,39 @@ function render(s){
  $("start").disabled=s.phase!=="waiting"||s.players.filter(p=>p.chips>0).length<2;
 }
 function esc(v){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+
+// V1.2: Web Audio synthesized effects (no external assets required).
+let audioContext=null, soundOn=true, lastPhase=null, lastCommunity=0, lastHand=0, lastSeconds=null;
+function sound(freq=440,duration=.07,type="sine",volume=.055){
+ if(!soundOn)return;
+ try{audioContext=audioContext||new (window.AudioContext||window.webkitAudioContext)();
+ const osc=audioContext.createOscillator(),gain=audioContext.createGain();osc.type=type;osc.frequency.value=freq;
+ gain.gain.setValueAtTime(volume,audioContext.currentTime);gain.gain.exponentialRampToValueAtTime(.001,audioContext.currentTime+duration);
+ osc.connect(gain);gain.connect(audioContext.destination);osc.start();osc.stop(audioContext.currentTime+duration);
+ }catch{}
+}
+$("soundToggle").onclick=()=>{soundOn=!soundOn;$("soundToggle").textContent=soundOn?"🔊 音效開":"🔇 音效關";if(soundOn)sound(660);};
+$("revealCards").onclick=()=>{sound(800,.12);socket.emit("revealCards",{},r=>{if(!r?.ok)$("message").textContent=r?.error||"亮牌失敗";});};
+function tickClock(){
+ const el=$("turnClock");if(!current?.deadline){el.hidden=true;lastSeconds=null;return;}
+ const left=Math.max(0,Math.ceil((current.deadline-(Date.now()+clockOffset))/1000));
+ el.hidden=false;el.classList.toggle("urgent",left<=5);
+ el.textContent=(current.phase==="allin_reveal"?"等待亮牌":"玩家思考時間")+`：${left} 秒`;
+ if(left!==lastSeconds&&left<=5&&left>0){sound(left===1?920:670,.10,"square",.035);}lastSeconds=left;
+}
+let clockOffset=0;
+setInterval(tickClock,200);
+const originalRender=render;
+render=function(s){
+ const oldPhase=lastPhase, oldCount=lastCommunity, oldHand=lastHand;
+ originalRender(s);
+ clockOffset=s.serverNow-Date.now();tickClock();
+ $("revealPanel").hidden=!s.canReveal;
+ $("revealHint").textContent=s.phase==="allin_reveal"?"全押後所有人亮牌，才會發公共牌":"棄牌後可自行選擇是否公開手牌";
+ $("seats").innerHTML=s.players.map(p=>`<div class="seat ${p.isTurn?"turn":""}"><strong>${esc(p.name)} ${p.isDealer?"Ⓓ":""}</strong><div class="chips">籌碼 ${p.chips}</div><div>下注 ${p.bet}</div><div class="flags">${p.folded?"FOLD":p.allIn?"ALL-IN":!p.connected?"離線":p.isTurn?"行動中":""}</div>${p.shownCards?.length?`<div class="shown">${p.shownCards.map(face).join("")}</div>`:""}</div>`).join("");
+ if(oldHand===s.handNo&&s.community.length>oldCount){sound(420,.10,"triangle");setTimeout(()=>sound(620,.14,"triangle"),110);}
+ if(oldPhase!==null&&oldPhase!==s.phase&&s.phase==="allin_reveal")sound(780,.22,"triangle");
+ lastPhase=s.phase;lastCommunity=s.community.length;lastHand=s.handNo;
+};
+// Button feedback for all player actions and presets.
+document.querySelectorAll('[data-action],[data-bb],#start,#addAI').forEach(b=>b.addEventListener('click',()=>sound(530,.055,'sine')));

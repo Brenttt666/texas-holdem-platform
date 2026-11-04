@@ -6,7 +6,7 @@
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-<header><div class="brand">♠ HOME GAME <span> TEXAS HOLD’EM</span></div><div id="connection" class="status">● 尚未連線</div></header>
+<header><div class="brand">♠ HOME GAME <span> TEXAS HOLD’EM</span></div><button id="soundToggle" class="soundToggle" type="button">🔊 音效開</button><div id="connection" class="status">● 尚未連線</div></header>
 <main>
 <section id="lobby" class="panel">
   <div class="eyebrow">PRIVATE POKER ROOM</div><h1>今晚，開一桌。</h1><p class="muted">純娛樂籌碼・最多 8 位玩家・手機與電腦即時同步</p>
@@ -38,13 +38,13 @@
       <div class="center">
         <div class="pot">POT <strong id="pot">0</strong></div>
         <div id="community" class="cards community"><span class="back">?</span><span class="back">?</span><span class="back">?</span><span class="back">?</span><span class="back">?</span></div>
-        <div id="message" class="message">等待玩家加入</div>
+        <div id="message" class="message">等待玩家加入</div><div id="turnClock" class="turnClock" hidden></div>
       </div>
     </div>
   </div>
   <div class="tableBottom">
     <div class="settingsLine"><span id="blinds">SB 10 / BB 20</span><span id="phase">等待開始</span><span id="playerCount">0 / 8 人</span></div>
-    <div id="myCards" class="myCards"></div>
+    <div id="myCards" class="myCards"></div><div id="revealPanel" class="revealPanel" hidden><button id="revealCards" type="button">🃏 翻開手牌（Show）</button><span id="revealHint"></span></div>
     <div id="actions" class="actions" hidden>
       <button data-action="fold" class="danger">Fold 棄牌</button>
       <button data-action="check" class="secondary">Check 過牌</button>
