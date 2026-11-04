@@ -21,14 +21,8 @@ npm start
 
 瀏覽器開啟 http://localhost:3000
 
-## 部署到公開網址
-可部署到支援 Node.js 長連線 / WebSocket 的服務，例如 Render、Railway 或自架 VPS。
-1. 將整個專案推送到 GitHub。
-2. 在部署平台建立 Node.js Web Service。
-3. Build command：`npm install`
-4. Start command：`npm start`
-5. 平台會提供 HTTPS 公開網址，分享給朋友即可加入。
-6. 請確認部署平台支援 WebSocket，並避免使用會休眠或重啟過於頻繁的免費方案。
+## 部署到公開網址（Render）
+專案已附 `render.yaml`，可在 Render 選擇從 GitHub 部署 Blueprint。先將整個專案上傳到自己的 GitHub repository，再到 Render 建立 Blueprint 並選取該 repository。Render 會依照 `render.yaml` 安裝套件、啟動伺服器並產生 HTTPS 公開網址。免費方案可能休眠，且伺服器重啟會清空進行中的房間；正式長時間遊玩建議使用常駐方案。
 
 ## 重要限制與後續工作
 這是第一版可測試 MVP，尚未達到正式商用或高可靠度遊戲伺服器標準：

@@ -128,10 +128,10 @@ function act(room, idx, action, amount=0) {
   const toCall=Math.max(0,room.currentBet-p.bet);
   if(action==="fold"){p.folded=true;p.acted=true;}
   else if(action==="check"){if(toCall>0)return;p.acted=true;}
-  else if(action==="call"){if(toCall===0)return;putIn(room,p,toCall);p.acted=true;}
+  else if(action==="call"){if(toCall>0)putIn(room,p,toCall);p.acted=true;}
   else if(action==="raise" || action==="bet"){
     const total=Math.floor(Number(amount));
-    if(!Number.isFinite(total)||total<=room.currentBet||total-p.bet<toCall+room.minRaise||total-p.bet>p.chips+ p.bet)return;
+    if(!Number.isSafeInteger(total)||total<room.currentBet+room.minRaise||total-p.bet>p.chips)return;
     const old=room.currentBet;putIn(room,p,total-p.bet);
     room.minRaise=Math.max(room.settings.bigBlind,room.currentBet-old);
     room.currentBet=p.bet;
@@ -188,15 +188,31 @@ io.on("connection", socket=>{
     room.players.push({id:null,name:`AI 玩家 ${room.players.filter(p=>p.isAI).length+1}`,chips:room.settings.buyIn,bet:0,folded:false,allIn:false,connected:true,isAI:true,holeCards:[],acted:false});
     sendRoom(room);cb?.({ok:true});
   });
-  socket.on("startHand",cb=>{
+  socket.on("startHand",(_data,cb)=>{
     const room=rooms.get(socket.data.room);if(!room)return;
     if(room.players.filter(p=>p.chips>0).length<2)return cb?.({ok:false,error:"至少需要兩位玩家。"});
     if(room.phase!=="waiting")return cb?.({ok:false,error:"目前這手尚未結束。"});
     startHand(room);cb?.({ok:true});
   });
-  socket.on("action",data=>{
-    const room=rooms.get(socket.data.room);if(!room)return;
-    const idx=room.players.findIndex(p=>p.id===socket.id);if(idx>=0)act(room,idx,data.action,data.amount);
+  socket.on("action",(data={},cb)=>{
+    const reply=(ok,error)=>{ if(typeof cb==="function")cb({ok,error}); if(!ok)socket.emit("notice",error); };
+    const room=rooms.get(socket.data.room);
+    if(!room)return reply(false,"找不到房間，請重新加入。");
+    const idx=room.players.findIndex(p=>!p.isAI && p.id===socket.id);
+    if(idx<0)return reply(false,"你不在這個牌桌中。");
+    if(room.turn!==idx)return reply(false,"還沒輪到你，請等待目前玩家行動。");
+    if(!["preflop","flop","turn","river"].includes(room.phase))return reply(false,"目前不是下注階段。");
+    const p=room.players[idx],toCall=Math.max(0,room.currentBet-p.bet);
+    if(p.folded||p.allIn)return reply(false,"你這手已無法下注。");
+    if(data.action==="check"&&toCall>0)return reply(false,`還需跟注 ${toCall}，不能過牌。`);
+    if(data.action==="raise"){
+      const total=Number(data.amount),minimum=room.currentBet+room.minRaise;
+      if(!Number.isSafeInteger(total)||total<minimum)return reply(false,`最低加注至 ${minimum} 籌碼。`);
+      if(total>p.bet+p.chips)return reply(false,"籌碼不足；可選擇 All-in。");
+    }
+    if(!["fold","check","call","raise","allin"].includes(data.action))return reply(false,"未知的操作。");
+    act(room,idx,data.action,data.amount);
+    reply(true);
   });
   socket.on("disconnect",()=>{
     const room=rooms.get(socket.data.room);if(!room)return;
